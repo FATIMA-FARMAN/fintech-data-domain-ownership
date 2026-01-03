@@ -14,6 +14,8 @@ This repo includes a local Apache Airflow DAG that orchestrates dbt runs + tests
 ![Airflow Logs - dbt run](airflow/docs/proof/04_airflow_logs_dbt_run.png)
 ![Airflow Logs - dbt test](airflow/docs/proof/05_airflow_logs_dbt_test.png)
 
+![Airflow UI](docs/proof/01_airflow_ui.png)
+
 ### Run Locally (replicable)
 
 **Terminal 1**
