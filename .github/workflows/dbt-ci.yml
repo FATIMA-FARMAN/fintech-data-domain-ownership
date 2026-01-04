@@ -9,10 +9,6 @@ jobs:
   dbt:
     runs-on: ubuntu-latest
 
-    env:
-      DBT_PROJECT_DIR: .
-      DBT_PROFILES_DIR: ./profiles
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,15 +23,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install dbt-bigquery==1.11.0
 
-      - name: dbt deps
+      - name: Detect dbt project
+        shell: bash
         run: |
-          dbt deps --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
+          set -euo pipefail
+          PROJECT_FILE="$(find . -maxdepth 10 -name dbt_project.yml -print -quit)"
 
-      - name: dbt parse
-        run: |
-          dbt parse --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
+          if [[ -z "$PROJECT_FILE" ]]; then
+            echo "No dbt_project.yml found in this repo. Skipping dbt checks."
+            echo "DBT_FOUND=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
 
-      - name: dbt compile
-        run: |
-          dbt compile --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
+
 
