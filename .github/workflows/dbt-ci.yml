@@ -10,17 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # Adjust if your dbt project is NOT in repo root
       DBT_PROJECT_DIR: .
       DBT_PROFILES_DIR: ./profiles
-
-      # Optional: BigQuery config (only needed if you run dbt build)
-      BQ_PROJECT: ${{ secrets.BQ_PROJECT }}
-      BQ_DATASET: ${{ secrets.BQ_DATASET }}
-      BQ_LOCATION: ${{ secrets.BQ_LOCATION }}
-
-      # Used by the conditional steps below
-      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
 
     steps:
       - name: Checkout
@@ -36,28 +27,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install dbt-bigquery==1.11.0
 
-      # --- Compile-only checks (no warehouse credentials needed) ---
       - name: dbt deps
         run: |
           dbt deps --project-dir "$DBT_PROJECT_DIR"
 
+      - name: dbt debug (profiles)
+        run: |
+          dbt debug --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
+
       - name: dbt parse
         run: |
-          dbt parse --project-dir "$DBT_PROJECT_DIR"
+          dbt parse --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
 
       - name: dbt compile
         run: |
-          dbt compile --project-dir "$DBT_PROJECT_DIR"
+          dbt compile --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
 
-      # --- Optional: Full build/tests only if SA key secret is configured ---
-      - name: Write GCP service account key (if provided)
-        if: env.GCP_SA_KEY != ''
-        run: |
-          mkdir -p .secrets
-          printf '%s' "$GCP_SA_KEY" > .secrets/gcp-sa.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/.secrets/gcp-sa.json" >> $GITHUB_ENV
-
-      - name: dbt build (only if creds exist)
-        if: env.GCP_SA_KEY != ''
-        run: |
-          dbt build --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
