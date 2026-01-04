@@ -11,12 +11,9 @@ jobs:
 
     env:
       DBT_PROJECT_DIR: .
-      DBT_PROFILES_DIR: ./profiles
-
-      # Dummy values so profile parsing succeeds even without secrets/creds
-      BQ_PROJECT: dummy-project
-      BQ_DATASET: dummy_dataset
-      BQ_LOCATION: US
+      DBT_PROFILES_DIR: ./profiles_ci
+      # IMPORTANT: set this to whatever is in dbt_project.yml under: profile:
+      DBT_PROFILE_NAME: fintech_data_domain_ownership
 
     steps:
       - name: Checkout
@@ -31,6 +28,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install dbt-bigquery==1.11.0
+
+      # Create a minimal CI profiles.yml so parse/compile always has a profile
+      - name: Create CI profiles.yml
+        run: |
+          mkdir -p "$DBT_PROFILES_DIR"
+          cat > "$DBT_PROFILES_DIR/profiles.yml" <<EOF
+          ${DBT_PROFILE_NAME}:
+            target: ci
+            outputs:
+              ci:
+                type: bigquery
+                method: oauth
+                project: dummy-project
+                dataset: dummy_dataset
+                location: US
+                threads: 1
+                timeout_seconds: 300
+          EOF
 
       - name: dbt deps
         run: |
