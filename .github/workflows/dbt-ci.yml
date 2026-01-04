@@ -11,9 +11,7 @@ jobs:
 
     env:
       DBT_PROJECT_DIR: .
-      DBT_PROFILES_DIR: ./profiles_ci
-      # IMPORTANT: set this to whatever is in dbt_project.yml under: profile:
-      DBT_PROFILE_NAME: fintech_data_domain_ownership
+      DBT_PROFILES_DIR: ./profiles
 
     steps:
       - name: Checkout
@@ -29,27 +27,42 @@ jobs:
           python -m pip install --upgrade pip
           pip install dbt-bigquery==1.11.0
 
-      # Create a minimal CI profiles.yml so parse/compile always has a profile
-      - name: Create CI profiles.yml
+      # Create a CI-safe profile so parse/compile doesn't require secrets
+      - name: Create CI profiles.yml (no secrets required)
         run: |
-          mkdir -p "$DBT_PROFILES_DIR"
-          cat > "$DBT_PROFILES_DIR/profiles.yml" <<EOF
-          ${DBT_PROFILE_NAME}:
-            target: ci
-            outputs:
-              ci:
-                type: bigquery
-                method: oauth
-                project: dummy-project
-                dataset: dummy_dataset
-                location: US
-                threads: 1
-                timeout_seconds: 300
-          EOF
+          python - <<'PY'
+          import yaml
+          from pathlib import Path
+
+          project = yaml.safe_load(open("dbt_project.yml"))
+          profile_name = project["profile"]
+
+          profiles = {
+              profile_name: {
+                  "target": "ci",
+                  "outputs": {
+                      "ci": {
+                          "type": "bigquery",
+                          "method": "oauth",
+                          "project": "dummy-ci-project",
+                          "dataset": "dummy_dataset",
+                          "location": "US",
+                          "threads": 1,
+                      }
+                  },
+              }
+          }
+
+          Path("profiles").mkdir(exist_ok=True)
+          with open("profiles/profiles.yml", "w") as f:
+              yaml.safe_dump(profiles, f, sort_keys=False)
+
+          print("Wrote profiles/profiles.yml for profile:", profile_name)
+          PY
 
       - name: dbt deps
         run: |
-          dbt deps --project-dir "$DBT_PROJECT_DIR"
+          dbt deps --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
 
       - name: dbt parse
         run: |
