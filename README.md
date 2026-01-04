@@ -19,7 +19,7 @@ This repo includes a local Apache Airflow DAG that orchestrates dbt runs + tests
 ![Airflow dbt test logs](screenshots/04_airflow_logs_dbt_test.png)
 
 ![Airflow UI](docs/proof/01_airflow_ui.png)
-**Local run evidence:** Airflow UI (v2.9.3) executed dbt deps → dbt run → dbt test successfully in sequence.
+**Local run evidence:** Airflow (v2.9.3) executed `dbt deps → dbt run → dbt test` successfully in sequence for the Payments domain.
 
 ### Run Locally (replicable)
 
