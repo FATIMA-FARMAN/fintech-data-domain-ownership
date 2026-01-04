@@ -33,3 +33,5 @@ export DBT_BIN="/Users/fatima/dbt_venv/bin/dbt"  # change if needed
 
 airflow db init
 airflow webserver --port 8081
+
+CI: GitHub Actions runs dbt deps + compile on PRs (dbt CI workflow).
