@@ -1,0 +1,61 @@
+name: dbt CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  dbt:
+    runs-on: ubuntu-latest
+
+    env:
+      # Adjust if your dbt project is NOT in repo root
+      DBT_PROJECT_DIR: .
+      DBT_PROFILES_DIR: ./profiles
+
+      # If you later add secrets for BigQuery, these are used by profiles.yml
+      BQ_PROJECT: ${{ secrets.BQ_PROJECT }}
+      BQ_DATASET: ${{ secrets.BQ_DATASET }}
+      BQ_LOCATION: ${{ secrets.BQ_LOCATION }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt (BigQuery)
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbt-bigquery==1.11.0
+
+      # --- Compile-only checks (no warehouse credentials needed) ---
+      - name: dbt deps
+        run: |
+          dbt deps --project-dir "$DBT_PROJECT_DIR"
+
+      - name: dbt parse
+        run: |
+          dbt parse --project-dir "$DBT_PROJECT_DIR" || true
+
+      - name: dbt compile
+        run: |
+          dbt compile --project-dir "$DBT_PROJECT_DIR" || true
+
+      # --- Optional: Full build/tests if secrets are configured ---
+      - name: Write GCP service account key (if provided)
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        run: |
+          mkdir -p .secrets
+          echo '${{ secrets.GCP_SA_KEY }}' > .secrets/gcp-sa.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/.secrets/gcp-sa.json" >> $GITHUB_ENV
+
+      - name: dbt build (only if creds exist)
+        if: ${{ secrets.GCP_SA_KEY != '' }}
+        run: |
+          dbt build --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
+

@@ -1,0 +1,12 @@
+default:
+  target: ci
+  outputs:
+    ci:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('BQ_PROJECT', 'dummy-project') }}"
+      dataset: "{{ env_var('BQ_DATASET', 'dummy_dataset') }}"
+      location: "{{ env_var('BQ_LOCATION', 'US') }}"
+      threads: 2
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS', '/tmp/no-creds.json') }}"
+
