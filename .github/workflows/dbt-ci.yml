@@ -2,7 +2,7 @@ name: dbt CI
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -14,10 +14,13 @@ jobs:
       DBT_PROJECT_DIR: .
       DBT_PROFILES_DIR: ./profiles
 
-      # If you later add secrets for BigQuery, these are used by profiles.yml
+      # Optional: BigQuery config (only needed if you run dbt build)
       BQ_PROJECT: ${{ secrets.BQ_PROJECT }}
       BQ_DATASET: ${{ secrets.BQ_DATASET }}
       BQ_LOCATION: ${{ secrets.BQ_LOCATION }}
+
+      # Used by the conditional steps below
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
 
     steps:
       - name: Checkout
@@ -40,22 +43,21 @@ jobs:
 
       - name: dbt parse
         run: |
-          dbt parse --project-dir "$DBT_PROJECT_DIR" || true
+          dbt parse --project-dir "$DBT_PROJECT_DIR"
 
       - name: dbt compile
         run: |
-          dbt compile --project-dir "$DBT_PROJECT_DIR" || true
+          dbt compile --project-dir "$DBT_PROJECT_DIR"
 
-      # --- Optional: Full build/tests if secrets are configured ---
+      # --- Optional: Full build/tests only if SA key secret is configured ---
       - name: Write GCP service account key (if provided)
-        if: ${{ secrets.GCP_SA_KEY != '' }}
+        if: env.GCP_SA_KEY != ''
         run: |
           mkdir -p .secrets
-          echo '${{ secrets.GCP_SA_KEY }}' > .secrets/gcp-sa.json
+          printf '%s' "$GCP_SA_KEY" > .secrets/gcp-sa.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/.secrets/gcp-sa.json" >> $GITHUB_ENV
 
       - name: dbt build (only if creds exist)
-        if: ${{ secrets.GCP_SA_KEY != '' }}
+        if: env.GCP_SA_KEY != ''
         run: |
           dbt build --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROFILES_DIR"
-
