@@ -13,6 +13,11 @@ jobs:
       DBT_PROJECT_DIR: .
       DBT_PROFILES_DIR: ./profiles
 
+      # Dummy values so profile parsing succeeds even without secrets/creds
+      BQ_PROJECT: dummy-project
+      BQ_DATASET: dummy_dataset
+      BQ_LOCATION: US
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
